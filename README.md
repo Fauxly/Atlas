@@ -6,7 +6,7 @@ A native package manager for jailbroken Apple TV — built for **rootful palera1
 
 <!-- Замени плейсхолдер ниже на реальный скриншот/GIF -->
 <p align="center">
-  <img src="docs/screenshot-main.png" width="720" alt="Atlas dashboard" />
+  <img src="images/logo.png" width="720" alt="Atlas dashboard" />
 </p>
 
 ## Why
@@ -36,7 +36,7 @@ There's no proper on-TV package manager for palera1n on Apple TV — the recomme
 
 Add this repository:
 ```
-https://Fauxly.github.io/
+https://fauxly.github.io/
 ```
 *(replace with wherever you're hosting the Atlas repo feed)*
 
