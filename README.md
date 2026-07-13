@@ -36,7 +36,7 @@ There's no proper on-TV package manager for palera1n on Apple TV — the recomme
 
 Add this repository:
 ```
-https://YOUR_GITHUB_USERNAME.github.io/atlas-repo
+https://Fauxly.github.io/
 ```
 *(replace with wherever you're hosting the Atlas repo feed)*
 
