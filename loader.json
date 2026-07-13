@@ -97,7 +97,7 @@
           },
           {
             "name": "Atlas",
-            "uri": "https://github.com/YOUR_GITHUB_USERNAME/Atlas/releases/latest/download/com.fixstricks.atlas_appletvos-arm64.deb",
+            "uri": "https://github.com/YOUR_GITHUB_USERNAME/Atlas/releases/latest/download/com.fauxly.atlas_appletvos-arm64.deb",
             "icon": "https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/Atlas/main/icon.png",
             "filePath": "/Applications/Atlas.app"
           }
