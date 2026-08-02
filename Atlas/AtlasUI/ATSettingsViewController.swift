@@ -12,6 +12,7 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
         case general
         case storage
         case repositories
+        case system
         case about
     }
 
@@ -42,6 +43,7 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "ResetRepositoriesCell")
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "AutoUpdateCell")
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "AboutCell")
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "SystemCell")
         view.addSubview(tableView)
     }
 
@@ -52,11 +54,16 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
     }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        sectionTitle(for: section)
+    }
+    
+    private func sectionTitle(for section: Int) -> String? {
         switch Section(rawValue: section) {
         case .language: return "SETTINGS_LANGUAGE_SECTION".localized
         case .general: return "SETTINGS_GENERAL_SECTION".localized
         case .storage: return "SETTINGS_STORAGE_SECTION".localized
         case .repositories: return "SETTINGS_REPOSITORIES_SECTION".localized
+        case .system: return "SETTINGS_SYSTEM_SECTION".localized
         case .about: return "SETTINGS_ABOUT_SECTION".localized
         case .none: return nil
         }
@@ -68,6 +75,7 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
         case .general: return 1
         case .storage: return 1
         case .repositories: return 1
+        case .system: return 2
         case .about: return 2
         case .none: return 0
         }
@@ -83,6 +91,8 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
             return storageCell(for: indexPath)
         case .repositories:
             return resetRepositoriesCell(for: indexPath)
+        case .system:
+            return systemCell(for: indexPath)
         case .about:
             return aboutCell(for: indexPath)
         case .none:
@@ -208,6 +218,31 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
         return cell
     }
 
+    private func systemCell(for indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "SystemCell") ?? UITableViewCell(style: .default, reuseIdentifier: "SystemCell")
+        cell.backgroundColor = .clear
+        
+        let focusBackground = UIView()
+        focusBackground.backgroundColor = ATTheme.surfaceFocused
+        focusBackground.layer.cornerRadius = 8
+        cell.selectedBackgroundView = focusBackground
+        
+        let title = indexPath.row == 0 ? "SETTINGS_RESPRING".localized : "SETTINGS_REBUILD_ICON_CACHE".localized
+        
+        if #available(tvOS 14.0, *) {
+            var content = cell.defaultContentConfiguration()
+            content.text = title
+            content.textProperties.color = ATTheme.textPrimary
+            content.textProperties.font = UIFont.systemFont(ofSize: 28, weight: .medium)
+            cell.contentConfiguration = content
+        } else {
+            cell.textLabel?.text = title
+            cell.textLabel?.textColor = ATTheme.textPrimary
+        }
+        
+        return cell
+    }
+    
     private func aboutCell(for indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "AboutCell") ?? UITableViewCell(style: .default, reuseIdentifier: "AboutCell")
         cell.backgroundColor = .clear
@@ -247,6 +282,8 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
             handleClearCacheTapped()
         case .repositories:
             handleResetRepositoriesTapped()
+        case .system:
+            handleSystemRowSelected(at: indexPath)
         case .about:
             handleAboutRowSelected(at: indexPath)
         case .none:
@@ -282,6 +319,86 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
         present(alert, animated: true, completion: nil)
     }
 
+    private func handleSystemRowSelected(at indexPath: IndexPath) {
+        if indexPath.row == 0 {
+            confirmRespring()
+        } else {
+            confirmRebuildIconCache()
+        }
+    }
+    
+    private func confirmRespring() {
+        let alert = UIAlertController(
+            title: "SETTINGS_RESPRING_CONFIRM_TITLE".localized,
+            message: "SETTINGS_RESPRING_CONFIRM_MESSAGE".localized,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "SETTINGS_RESPRING_CONFIRM_BUTTON".localized, style: .destructive) { _ in
+            self.performRespring()
+        })
+        alert.addAction(UIAlertAction(title: "SETTINGS_RESTART_CANCEL".localized, style: .cancel, handler: nil))
+        present(alert, animated: true, completion: nil)
+    }
+    
+    private func performRespring() {
+        Task {
+            // killall — часть базовой ОС, не бутстрапа, поэтому путь не через ATPathManager.makePath
+            // (в отличие от uicache/dpkg, которые ставятся именно Procursus-бутстрапом).
+            // После этого вызова сам Atlas тоже будет выгружен вместе с остальным SpringBoard —
+            // никакого экрана с результатом показать не успеем, это ожидаемо.
+            _ = try? await ATSpawn.runCommand("/usr/bin/killall", arguments: ["-9", "SpringBoard"], elevated: true)
+        }
+    }
+    
+    private func confirmRebuildIconCache() {
+        let alert = UIAlertController(
+            title: "SETTINGS_REBUILD_ICON_CACHE_CONFIRM_TITLE".localized,
+            message: nil,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "SETTINGS_REBUILD_ICON_CACHE_CONFIRM_BUTTON".localized, style: .default) { _ in
+            self.performRebuildIconCache()
+        })
+        alert.addAction(UIAlertAction(title: "SETTINGS_RESTART_CANCEL".localized, style: .cancel, handler: nil))
+        present(alert, animated: true, completion: nil)
+    }
+    
+    private func performRebuildIconCache() {
+        let loadingAlert = UIAlertController(
+            title: "SETTINGS_REBUILD_ICON_CACHE_RUNNING".localized,
+            message: nil,
+            preferredStyle: .alert
+        )
+        present(loadingAlert, animated: true, completion: nil)
+        
+        Task {
+            do {
+                let uicachePath = ATPathManager.shared.makePath("/usr/bin/uicache")
+                let result = try await ATSpawn.runCommand(uicachePath, arguments: [], elevated: true)
+                
+                await MainActor.run {
+                    loadingAlert.dismiss(animated: true) {
+                        let resultAlert = UIAlertController(
+                            title: result.exitCode == 0 ? "COMMON_SUCCESS".localized : "COMMON_ERROR".localized,
+                            message: result.exitCode == 0 ? nil : result.stderr,
+                            preferredStyle: .alert
+                        )
+                        resultAlert.addAction(UIAlertAction(title: "COMMON_OK".localized, style: .default, handler: nil))
+                        self.present(resultAlert, animated: true, completion: nil)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    loadingAlert.dismiss(animated: true) {
+                        let errorAlert = UIAlertController(title: "COMMON_ERROR".localized, message: error.localizedDescription, preferredStyle: .alert)
+                        errorAlert.addAction(UIAlertAction(title: "COMMON_OK".localized, style: .default, handler: nil))
+                        self.present(errorAlert, animated: true, completion: nil)
+                    }
+                }
+            }
+        }
+    }
+    
     private func handleLanguageSelection(at indexPath: IndexPath) {
         let language = languages[indexPath.row]
         guard language != ATLocalizationManager.currentLanguage else { return }
@@ -323,6 +440,37 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         120
+    }
+    
+    // MARK: - Яркие заголовки секций
+    //
+    // По умолчанию UITableView рисует заголовки секций тусклым системным серым — почти
+    // не видно на тёмном фоне. Явно задаём собственный UILabel вместо стандартного текста.
+    
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        guard let title = sectionTitle(for: section) else { return nil }
+        
+        let container = UIView()
+        
+        let label = UILabel()
+        label.text = title
+        label.textColor = ATTheme.brass
+        label.font = UIFont.systemFont(ofSize: 22, weight: .bold)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(label)
+        
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -20),
+            label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -8)
+        ])
+        
+        return container
+    }
+    
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        guard sectionTitle(for: section) != nil else { return 0 }
+        return 56
     }
     
     // tvOS сам поднимает сфокусированную строку светлой карточкой — без свапа цвета текста

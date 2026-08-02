@@ -94,3 +94,12 @@
 "ERROR_UTF8_DECODE" = "UTF-8 decoding error";
 "ERROR_NO_FILENAME" = "Package %@ has no Filename set — download is not possible";
 "ERROR_DOWNLOAD_FAILED" = "Failed to download file";
+"SETTINGS_SYSTEM_SECTION" = "System";
+"SETTINGS_RESPRING" = "Respring";
+"SETTINGS_REBUILD_ICON_CACHE" = "Rebuild Icon Cache";
+"SETTINGS_RESPRING_CONFIRM_TITLE" = "Respring now?";
+"SETTINGS_RESPRING_CONFIRM_MESSAGE" = "The screen will reload and Atlas will close too. This is expected.";
+"SETTINGS_RESPRING_CONFIRM_BUTTON" = "Respring";
+"SETTINGS_REBUILD_ICON_CACHE_CONFIRM_TITLE" = "Rebuild icon cache now?";
+"SETTINGS_REBUILD_ICON_CACHE_CONFIRM_BUTTON" = "Rebuild";
+"SETTINGS_REBUILD_ICON_CACHE_RUNNING" = "Rebuilding icon cache...";

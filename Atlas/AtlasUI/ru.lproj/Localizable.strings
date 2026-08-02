@@ -91,5 +91,13 @@
 "ERROR_UTF8_DECODE" = "Ошибка декодирования UTF-8";
 "ERROR_NO_FILENAME" = "У пакета %@ не указан Filename — скачивание невозможно";
 "ERROR_DOWNLOAD_FAILED" = "Не удалось скачать файл";
-
+"SETTINGS_SYSTEM_SECTION" = "Система";
+"SETTINGS_RESPRING" = "Respring";
+"SETTINGS_REBUILD_ICON_CACHE" = "Пересобрать кэш иконок";
+"SETTINGS_RESPRING_CONFIRM_TITLE" = "Выполнить Respring?";
+"SETTINGS_RESPRING_CONFIRM_MESSAGE" = "Экран перезагрузится, Atlas тоже закроется. Это нормально.";
+"SETTINGS_RESPRING_CONFIRM_BUTTON" = "Respring";
+"SETTINGS_REBUILD_ICON_CACHE_CONFIRM_TITLE" = "Пересобрать кэш иконок сейчас?";
+"SETTINGS_REBUILD_ICON_CACHE_CONFIRM_BUTTON" = "Пересобрать";
+"SETTINGS_REBUILD_ICON_CACHE_RUNNING" = "Пересборка кэша иконок...";
 
