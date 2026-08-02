@@ -103,3 +103,14 @@
 "SETTINGS_REBUILD_ICON_CACHE_CONFIRM_TITLE" = "Rebuild icon cache now?";
 "SETTINGS_REBUILD_ICON_CACHE_CONFIRM_BUTTON" = "Rebuild";
 "SETTINGS_REBUILD_ICON_CACHE_RUNNING" = "Rebuilding icon cache...";
+"SETTINGS_CHECK_UPDATE" = "Check for Updates";
+"SETTINGS_CHECKING_UPDATE" = "Checking...";
+"SETTINGS_UPDATE_NONE_TITLE" = "No Updates";
+"SETTINGS_UPDATE_NONE_MESSAGE" = "You already have the latest version.";
+"SETTINGS_UPDATE_AVAILABLE_TITLE" = "Update Available";
+"SETTINGS_UPDATE_AVAILABLE_MESSAGE" = "Version %@ is available. Update now?";
+"SETTINGS_UPDATE_NOW" = "Update";
+"SETTINGS_UPDATE_DOWNLOADING" = "Downloading update...";
+"SETTINGS_UPDATE_INSTALLING" = "Installing update...";
+"SETTINGS_UPDATE_DONE_TITLE" = "Update Installed";
+"SETTINGS_UPDATE_DONE_MESSAGE" = "The app needs to restart to apply the update. It will close now — please reopen it manually.";

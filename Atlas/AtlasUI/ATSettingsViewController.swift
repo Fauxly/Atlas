@@ -76,7 +76,7 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
         case .storage: return 1
         case .repositories: return 1
         case .system: return 2
-        case .about: return 2
+        case .about: return 3
         case .none: return 0
         }
     }
@@ -252,7 +252,12 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
         focusBackground.layer.cornerRadius = 8
         cell.selectedBackgroundView = focusBackground
 
-        let title = indexPath.row == 0 ? "SETTINGS_ABOUT".localized : "SETTINGS_DIAGNOSTIC_LOG".localized
+        let title: String
+        switch indexPath.row {
+        case 0: title = "SETTINGS_ABOUT".localized
+        case 1: title = "SETTINGS_DIAGNOSTIC_LOG".localized
+        default: title = "SETTINGS_CHECK_UPDATE".localized
+        }
 
         if #available(tvOS 14.0, *) {
             var content = cell.defaultContentConfiguration()
@@ -297,11 +302,130 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
     }
     
     private func handleAboutRowSelected(at indexPath: IndexPath) {
-        if indexPath.row == 0 {
+        switch indexPath.row {
+        case 0:
             navigationController?.pushViewController(ATAboutViewController(), animated: true)
-        } else {
+        case 1:
             navigationController?.pushViewController(ATLogViewController(), animated: true)
+        default:
+            checkForAppUpdate()
         }
+    }
+    
+    private func checkForAppUpdate() {
+        let loadingAlert = UIAlertController(title: "SETTINGS_CHECKING_UPDATE".localized, message: nil, preferredStyle: .alert)
+        present(loadingAlert, animated: true, completion: nil)
+        
+        Task {
+            do {
+                let update = try await ATAppUpdateChecker.checkForUpdate()
+                
+                await MainActor.run {
+                    loadingAlert.dismiss(animated: true) {
+                        guard let update = update else {
+                            self.showSimpleAlert(title: "SETTINGS_UPDATE_NONE_TITLE".localized, message: "SETTINGS_UPDATE_NONE_MESSAGE".localized)
+                            return
+                        }
+                        self.confirmAppUpdate(update)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    loadingAlert.dismiss(animated: true) {
+                        self.showSimpleAlert(title: "COMMON_ERROR".localized, message: error.localizedDescription)
+                    }
+                }
+            }
+        }
+    }
+    
+    private func confirmAppUpdate(_ update: ATAppUpdateInfo) {
+        let alert = UIAlertController(
+            title: "SETTINGS_UPDATE_AVAILABLE_TITLE".localized,
+            message: String(format: "SETTINGS_UPDATE_AVAILABLE_MESSAGE".localized, update.version),
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "SETTINGS_UPDATE_NOW".localized, style: .default) { [weak self] _ in
+            self?.performAppUpdate(update)
+        })
+        alert.addAction(UIAlertAction(title: "SETTINGS_RESTART_CANCEL".localized, style: .cancel, handler: nil))
+        present(alert, animated: true, completion: nil)
+    }
+    
+    private func performAppUpdate(_ update: ATAppUpdateInfo) {
+        let progressAlert = UIAlertController(title: "SETTINGS_UPDATE_DOWNLOADING".localized, message: nil, preferredStyle: .alert)
+        present(progressAlert, animated: true, completion: nil)
+        
+        Task {
+            do {
+                let (tempURL, response) = try await URLSession.shared.download(from: update.downloadURL)
+                guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                    throw NSError(domain: "Atlas", code: -1, userInfo: [NSLocalizedDescriptionKey: "ERROR_DOWNLOAD_FAILED".localized])
+                }
+                
+                let destination = FileManager.default.temporaryDirectory.appendingPathComponent(update.downloadURL.lastPathComponent)
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    try FileManager.default.removeItem(at: destination)
+                }
+                try FileManager.default.moveItem(at: tempURL, to: destination)
+                
+                await MainActor.run {
+                    progressAlert.dismiss(animated: true) {
+                        self.installAppUpdate(from: destination)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    progressAlert.dismiss(animated: true) {
+                        self.showSimpleAlert(title: "COMMON_ERROR".localized, message: error.localizedDescription)
+                    }
+                }
+            }
+        }
+    }
+    
+    private func installAppUpdate(from fileURL: URL) {
+        let installingAlert = UIAlertController(title: "SETTINGS_UPDATE_INSTALLING".localized, message: nil, preferredStyle: .alert)
+        present(installingAlert, animated: true, completion: nil)
+        
+        Task {
+            do {
+                let dpkgPath = ATPathManager.shared.makePath("/usr/bin/dpkg")
+                let result = try await ATSpawn.runCommand(dpkgPath, arguments: ["-i", fileURL.path], elevated: true)
+                
+                await MainActor.run {
+                    installingAlert.dismiss(animated: true) {
+                        if result.exitCode == 0 {
+                            let restartAlert = UIAlertController(
+                                title: "SETTINGS_UPDATE_DONE_TITLE".localized,
+                                message: "SETTINGS_UPDATE_DONE_MESSAGE".localized,
+                                preferredStyle: .alert
+                            )
+                            restartAlert.addAction(UIAlertAction(title: "SETTINGS_RESTART_CONFIRM".localized, style: .destructive) { _ in
+                                // Файлы на диске уже новые, но текущий процесс всё ещё работает
+                                // со старым бинарником в памяти — обязательно нужен перезапуск.
+                                exit(0)
+                            })
+                            self.present(restartAlert, animated: true, completion: nil)
+                        } else {
+                            self.showSimpleAlert(title: "COMMON_ERROR".localized, message: result.stderr)
+                        }
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    installingAlert.dismiss(animated: true) {
+                        self.showSimpleAlert(title: "COMMON_ERROR".localized, message: error.localizedDescription)
+                    }
+                }
+            }
+        }
+    }
+    
+    private func showSimpleAlert(title: String, message: String?) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "COMMON_OK".localized, style: .default, handler: nil))
+        present(alert, animated: true, completion: nil)
     }
     
     private func handleResetRepositoriesTapped() {

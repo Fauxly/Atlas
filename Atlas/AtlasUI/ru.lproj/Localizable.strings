@@ -100,4 +100,14 @@
 "SETTINGS_REBUILD_ICON_CACHE_CONFIRM_TITLE" = "Пересобрать кэш иконок сейчас?";
 "SETTINGS_REBUILD_ICON_CACHE_CONFIRM_BUTTON" = "Пересобрать";
 "SETTINGS_REBUILD_ICON_CACHE_RUNNING" = "Пересборка кэша иконок...";
-
+"SETTINGS_CHECK_UPDATE" = "Проверить обновления";
+"SETTINGS_CHECKING_UPDATE" = "Проверка...";
+"SETTINGS_UPDATE_NONE_TITLE" = "Обновлений нет";
+"SETTINGS_UPDATE_NONE_MESSAGE" = "У тебя уже установлена последняя версия.";
+"SETTINGS_UPDATE_AVAILABLE_TITLE" = "Доступно обновление";
+"SETTINGS_UPDATE_AVAILABLE_MESSAGE" = "Доступна версия %@. Обновить сейчас?";
+"SETTINGS_UPDATE_NOW" = "Обновить";
+"SETTINGS_UPDATE_DOWNLOADING" = "Скачивание обновления...";
+"SETTINGS_UPDATE_INSTALLING" = "Установка обновления...";
+"SETTINGS_UPDATE_DONE_TITLE" = "Обновление установлено";
+"SETTINGS_UPDATE_DONE_MESSAGE" = "Чтобы применить обновление, приложение сейчас закроется — открой его заново вручную.";
