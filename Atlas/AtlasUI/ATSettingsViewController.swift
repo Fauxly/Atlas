@@ -466,11 +466,30 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
     
     private func performRespring() {
         Task {
-            // killall — часть базовой ОС, не бутстрапа, поэтому путь не через ATPathManager.makePath
-            // (в отличие от uicache/dpkg, которые ставятся именно Procursus-бутстрапом).
-            // После этого вызова сам Atlas тоже будет выгружен вместе с остальным SpringBoard —
-            // никакого экрана с результатом показать не успеем, это ожидаемо.
-            _ = try? await ATSpawn.runCommand("/usr/bin/killall", arguments: ["-9", "SpringBoard"], elevated: true)
+            do {
+                // Сначала пробуем как обычный системный бинарник (не через бутстрап).
+                // "PineBoard" — точное имя процесса домашнего экрана на tvOS, подтверждено
+                // через `ps -ax` на реальном устройстве (/Applications/PineBoard.app/PineBoard).
+                // Регистр важен для killall — не "Pineboard"/"SpringBoard".
+                let result = try await ATSpawn.runCommand("/usr/bin/killall", arguments: ["-9", "PineBoard"], elevated: true)
+                
+                if result.exitCode != 0 {
+                    print("Atlas: killall SpringBoard вернул код \(result.exitCode): \(result.stderr)")
+                    await MainActor.run {
+                        self.showSimpleAlert(
+                            title: "SETTINGS_RESPRING_FAILED_TITLE".localized,
+                            message: "\(result.stderr)\n\n(код: \(result.exitCode))"
+                        )
+                    }
+                }
+                // При успехе (exitCode == 0) само приложение выгрузится вместе со SpringBoard —
+                // показать алерт с результатом мы просто не успеем, это ожидаемо.
+            } catch {
+                print("Atlas: не удалось запустить killall для respring: \(error.localizedDescription)")
+                await MainActor.run {
+                    self.showSimpleAlert(title: "SETTINGS_RESPRING_FAILED_TITLE".localized, message: error.localizedDescription)
+                }
+            }
         }
     }
     

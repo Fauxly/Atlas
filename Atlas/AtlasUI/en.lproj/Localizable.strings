@@ -114,3 +114,4 @@
 "SETTINGS_UPDATE_INSTALLING" = "Installing update...";
 "SETTINGS_UPDATE_DONE_TITLE" = "Update Installed";
 "SETTINGS_UPDATE_DONE_MESSAGE" = "The app needs to restart to apply the update. It will close now — please reopen it manually.";
+"SETTINGS_RESPRING_FAILED_TITLE" = "Respring Failed";

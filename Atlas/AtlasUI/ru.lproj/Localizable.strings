@@ -111,3 +111,4 @@
 "SETTINGS_UPDATE_INSTALLING" = "Установка обновления...";
 "SETTINGS_UPDATE_DONE_TITLE" = "Обновление установлено";
 "SETTINGS_UPDATE_DONE_MESSAGE" = "Чтобы применить обновление, приложение сейчас закроется — открой его заново вручную.";
+"SETTINGS_RESPRING_FAILED_TITLE" = "Respring не удался";
