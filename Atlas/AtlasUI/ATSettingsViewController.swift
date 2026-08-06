@@ -517,7 +517,7 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
         Task {
             do {
                 let uicachePath = ATPathManager.shared.makePath("/usr/bin/uicache")
-                let result = try await ATSpawn.runCommand(uicachePath, arguments: [], elevated: true)
+                let result = try await ATSpawn.runCommand(uicachePath, arguments: ["-a", "--respring"], elevated: true)
                 
                 await MainActor.run {
                     loadingAlert.dismiss(animated: true) {
