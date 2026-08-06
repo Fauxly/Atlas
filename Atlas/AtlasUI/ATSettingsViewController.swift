@@ -393,6 +393,15 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
                 let dpkgPath = ATPathManager.shared.makePath("/usr/bin/dpkg")
                 let result = try await ATSpawn.runCommand(dpkgPath, arguments: ["-i", fileURL.path], elevated: true)
                 
+                // Подчищаем скачанный .deb — он больше не нужен.
+                try? FileManager.default.removeItem(at: fileURL)
+                
+                // Перерегистрируем приложение, чтобы система подхватила обновлённый бандл.
+                if result.exitCode == 0 {
+                    let uicachePath = ATPathManager.shared.makePath("/usr/bin/uicache")
+                    _ = try? await ATSpawn.runCommand(uicachePath, arguments: ["-a"], elevated: true)
+                }
+                
                 await MainActor.run {
                     installingAlert.dismiss(animated: true) {
                         if result.exitCode == 0 {
