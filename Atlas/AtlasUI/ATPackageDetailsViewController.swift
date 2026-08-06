@@ -19,6 +19,13 @@ public final class ATPackageDetailsViewController: UIViewController {
     
     private var imageDownloadTask: URLSessionDataTask?
     
+    private enum PackageState {
+        case notInstalled
+        case installed
+        case updateAvailable(installedVersion: String)
+    }
+    private var packageState: PackageState = .notInstalled
+    
     // Инициализатор, принимающий модель твика
     public init(package: ATPackage) {
         self.package = package
@@ -104,13 +111,18 @@ public final class ATPackageDetailsViewController: UIViewController {
     private func configureData() {
         titleLabel.text = package.name
         
-        // Если пакет уже установлен — сразу показываем это, не дожидаясь нажатия кнопки
-        let isAlreadyInstalled = ATStatusParser.shared.readInstalledPackages()
-            .contains { $0.id == package.packageID }
-        if isAlreadyInstalled {
-            installButton.setTitle("PKG_DETAILS_INSTALLED".localized, for: .normal)
-            installButton.isEnabled = false
+        // Определяем состояние пакета: не установлен / установлен / есть обновление
+        if let installed = ATStatusParser.shared.readInstalledPackages().first(where: { $0.id == package.packageID }) {
+            // Пакет с таким ID стоит — но может быть, мы смотрим на более новую версию
+            if ATDependencyChecker.compareVersions(package.version, ">>", installed.version) {
+                packageState = .updateAvailable(installedVersion: installed.version)
+            } else {
+                packageState = .installed
+            }
+        } else {
+            packageState = .notInstalled
         }
+        updateInstallButtonAppearance()
         
         // Формируем красивый блок мета-данных слева под иконкой
         let author = package.author ?? "PKG_DETAILS_UNKNOWN_AUTHOR".localized
@@ -141,20 +153,54 @@ public final class ATPackageDetailsViewController: UIViewController {
         }
     }
     
-    // Логика установки пакета по нажатию кнопки пульта
+    /// Единая точка правды для вида кнопки — вызывается и при первой загрузке экрана,
+    /// и после успешной установки/удаления, чтобы кнопка всегда отражала актуальное состояние.
+    private func updateInstallButtonAppearance() {
+        switch packageState {
+        case .notInstalled:
+            installButton.setTitle("PKG_DETAILS_INSTALL".localized, for: .normal)
+            installButton.tintColor = nil
+        case .installed:
+            installButton.setTitle("PKG_DETAILS_UNINSTALL".localized, for: .normal)
+            installButton.tintColor = .systemRed
+        case .updateAvailable(let oldVersion):
+            let title = String(format: "PKG_DETAILS_UPDATE".localized, oldVersion, package.version)
+            installButton.setTitle(title, for: .normal)
+            installButton.tintColor = ATTheme.brass
+        }
+        installButton.isEnabled = true
+    }
+    
+    // Логика кнопки зависит от состояния пакета
     @objc private func installButtonTapped() {
-        guard let repository = package.sourceRepository else {
-            appendLog("PKG_DETAILS_ERROR_NO_REPO".localized + "\n")
-            return
+        switch packageState {
+        case .notInstalled:
+            // Обычная установка с нуля
+            guard let repository = package.sourceRepository else {
+                appendLog("PKG_DETAILS_ERROR_NO_REPO".localized + "\n")
+                return
+            }
+            
+            let missing = ATDependencyChecker.missingDependencies(for: package)
+            if !missing.isEmpty {
+                showMissingDependenciesAlert(missing, repository: repository)
+                return
+            }
+            
+            startInstall(repository: repository)
+            
+        case .installed:
+            // Удаление
+            confirmUninstall()
+            
+        case .updateAvailable:
+            // Обновление — dpkg -i сам корректно накатывает поверх старой версии
+            guard let repository = package.sourceRepository else {
+                appendLog("PKG_DETAILS_ERROR_NO_REPO".localized + "\n")
+                return
+            }
+            startInstall(repository: repository)
         }
-        
-        let missing = ATDependencyChecker.missingDependencies(for: package)
-        if !missing.isEmpty {
-            showMissingDependenciesAlert(missing, repository: repository)
-            return
-        }
-        
-        startInstall(repository: repository)
     }
     
     /// Каждая группа — это "ИЛИ" (альтернативы через |), а между группами — "И" (нужны все).
@@ -182,6 +228,49 @@ public final class ATPackageDetailsViewController: UIViewController {
         present(alert, animated: true, completion: nil)
     }
     
+    private func confirmUninstall() {
+        let alert = UIAlertController(
+            title: package.name,
+            message: "PKG_DETAILS_UNINSTALL_CONFIRM".localized,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "PKG_DETAILS_UNINSTALL".localized, style: .destructive) { [weak self] _ in
+            self?.startUninstall()
+        })
+        alert.addAction(UIAlertAction(title: "COMMON_CANCEL".localized, style: .cancel, handler: nil))
+        present(alert, animated: true, completion: nil)
+    }
+    
+    private func startUninstall() {
+        consoleLogTextView.text = String(format: "PKG_DETAILS_UNINSTALLING".localized, package.packageID) + "\n"
+        installButton.isEnabled = false
+        
+        Task {
+            do {
+                let dpkgPath = ATPathManager.shared.makePath("/usr/bin/dpkg")
+                let result = try await ATSpawn.runCommand(dpkgPath, arguments: ["-r", package.packageID], elevated: true)
+                
+                await MainActor.run {
+                    if result.exitCode == 0 {
+                        self.appendLog("\n" + String(format: "PKG_DETAILS_UNINSTALL_SUCCESS".localized, self.package.packageID) + "\n")
+                        self.appendLog(result.stdout)
+                        self.packageState = .notInstalled
+                        self.updateInstallButtonAppearance()
+                    } else {
+                        self.appendLog("\n" + String(format: "PKG_DETAILS_DPKG_ERROR".localized, result.exitCode) + "\n")
+                        self.appendLog(result.stderr)
+                        self.installButton.isEnabled = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.appendLog("\n" + "PKG_DETAILS_GENERIC_ERROR".localized + error.localizedDescription)
+                    self.installButton.isEnabled = true
+                }
+            }
+        }
+    }
+    
     private func startInstall(repository: ATRepository) {
         consoleLogTextView.text = String(format: "PKG_DETAILS_DOWNLOADING".localized, package.packageID) + "\n"
         installButton.isEnabled = false
@@ -203,7 +292,8 @@ public final class ATPackageDetailsViewController: UIViewController {
                     if result.exitCode == 0 {
                         self.appendLog("\n" + String(format: "PKG_DETAILS_SUCCESS".localized, self.package.packageID) + "\n")
                         self.appendLog(result.stdout)
-                        self.installButton.setTitle("PKG_DETAILS_INSTALLED".localized, for: .normal)
+                        self.packageState = .installed
+                        self.updateInstallButtonAppearance()
                     } else {
                         self.appendLog("\n" + String(format: "PKG_DETAILS_DPKG_ERROR".localized, result.exitCode) + "\n")
                         self.appendLog(result.stderr)

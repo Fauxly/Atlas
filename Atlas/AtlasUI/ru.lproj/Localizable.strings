@@ -112,3 +112,8 @@
 "SETTINGS_UPDATE_DONE_TITLE" = "Обновление установлено";
 "SETTINGS_UPDATE_DONE_MESSAGE" = "Чтобы применить обновление, приложение сейчас закроется — открой его заново вручную.";
 "SETTINGS_RESPRING_FAILED_TITLE" = "Respring не удался";
+"PKG_DETAILS_UNINSTALL" = "Удалить";
+"PKG_DETAILS_UNINSTALL_CONFIRM" = "Удалить этот твик с устройства?";
+"PKG_DETAILS_UNINSTALLING" = "Удаление %@...";
+"PKG_DETAILS_UNINSTALL_SUCCESS" = "[УСПЕХ] Пакет %@ удалён.";
+"PKG_DETAILS_UPDATE" = "Обновить (v%@ → v%@)";

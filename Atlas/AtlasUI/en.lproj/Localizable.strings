@@ -115,3 +115,8 @@
 "SETTINGS_UPDATE_DONE_TITLE" = "Update Installed";
 "SETTINGS_UPDATE_DONE_MESSAGE" = "The app needs to restart to apply the update. It will close now — please reopen it manually.";
 "SETTINGS_RESPRING_FAILED_TITLE" = "Respring Failed";
+"PKG_DETAILS_UNINSTALL" = "Uninstall";
+"PKG_DETAILS_UNINSTALL_CONFIRM" = "Remove this tweak from the device?";
+"PKG_DETAILS_UNINSTALLING" = "Uninstalling %@...";
+"PKG_DETAILS_UNINSTALL_SUCCESS" = "[SUCCESS] Package %@ removed.";
+"PKG_DETAILS_UPDATE" = "Update (v%@ → v%@)";
