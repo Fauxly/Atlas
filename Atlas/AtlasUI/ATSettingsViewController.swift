@@ -393,15 +393,6 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
                 let dpkgPath = ATPathManager.shared.makePath("/usr/bin/dpkg")
                 let result = try await ATSpawn.runCommand(dpkgPath, arguments: ["-i", fileURL.path], elevated: true)
                 
-                // Подчищаем скачанный .deb — он больше не нужен.
-                try? FileManager.default.removeItem(at: fileURL)
-                
-                // Перерегистрируем приложение, чтобы система подхватила обновлённый бандл.
-                if result.exitCode == 0 {
-                    let uicachePath = ATPathManager.shared.makePath("/usr/bin/uicache")
-                    _ = try? await ATSpawn.runCommand(uicachePath, arguments: ["-a"], elevated: true)
-                }
-                
                 await MainActor.run {
                     installingAlert.dismiss(animated: true) {
                         if result.exitCode == 0 {
@@ -526,7 +517,7 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
         Task {
             do {
                 let uicachePath = ATPathManager.shared.makePath("/usr/bin/uicache")
-                let result = try await ATSpawn.runCommand(uicachePath, arguments: ["-a", "--respring"], elevated: true)
+                let result = try await ATSpawn.runCommand(uicachePath, arguments: [], elevated: true)
                 
                 await MainActor.run {
                     loadingAlert.dismiss(animated: true) {
@@ -562,9 +553,9 @@ final class ATSettingsViewController: UIViewController, UITableViewDataSource, U
         )
         alert.addAction(UIAlertAction(title: "SETTINGS_RESTART_CONFIRM".localized, style: .destructive) { _ in
             ATLocalizationManager.currentLanguage = language
-            // Жёсткий выход — пользователь открывает приложение заново вручную с главного экрана.
-            // На джейлбрейкнутом устройстве это приемлемо; через App Store такое не прошло бы ревью,
-            // но Atlas туда и не попадёт.
+            // Очищаем лог — старые записи на предыдущем языке уже неактуальны,
+            // а при следующем запуске ATLogger.start() начнёт новый чистый лог.
+            ATLogger.clearLog()
             exit(0)
         })
         alert.addAction(UIAlertAction(title: "SETTINGS_RESTART_CANCEL".localized, style: .cancel, handler: nil))
