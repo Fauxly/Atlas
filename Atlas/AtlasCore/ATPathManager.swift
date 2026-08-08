@@ -22,11 +22,11 @@ public final class ATPathManager {
         if FileManager.default.fileExists(atPath: "/var/jb") {
             self.jbPrefix = "/var/jb"
             self.isRootless = true
-            print("Atlas: Обнаружено окружение ROOTLESS. Префикс: /var/jb")
+            print("Atlas: " + "LOG_DETECTED_ROOTLESS".localized)
         } else {
             self.jbPrefix = ""
             self.isRootless = false
-            print("Atlas: Обнаружено окружение ROOTFUL. Префикс отсутствует (корень)")
+            print("Atlas: " + "LOG_DETECTED_ROOTFUL".localized)
         }
     }
     

@@ -92,7 +92,7 @@ final class ATRepositoryManager {
                     do {
                         return try await ATNetworkManager.shared.fetchPackages(from: repository)
                     } catch {
-                        print("Atlas: Не удалось загрузить репозиторий \(repository.name): \(error.localizedDescription)")
+                        print("Atlas: " + String(format: "LOG_REPO_LOAD_FAILED".localized, repository.name, error.localizedDescription))
                         return []
                     }
                 }

@@ -117,3 +117,6 @@
 "PKG_DETAILS_UNINSTALLING" = "Удаление %@...";
 "PKG_DETAILS_UNINSTALL_SUCCESS" = "[УСПЕХ] Пакет %@ удалён.";
 "PKG_DETAILS_UPDATE" = "Обновить (v%@ → v%@)";
+"LOG_DETECTED_ROOTLESS" = "Обнаружено окружение ROOTLESS. Префикс: /var/jb";
+"LOG_DETECTED_ROOTFUL" = "Обнаружено окружение ROOTFUL. Префикс отсутствует (корень)";
+"LOG_REPO_LOAD_FAILED" = "Не удалось загрузить репозиторий %@: %@";

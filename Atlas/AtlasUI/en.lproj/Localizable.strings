@@ -120,3 +120,6 @@
 "PKG_DETAILS_UNINSTALLING" = "Uninstalling %@...";
 "PKG_DETAILS_UNINSTALL_SUCCESS" = "[SUCCESS] Package %@ removed.";
 "PKG_DETAILS_UPDATE" = "Update (v%@ → v%@)";
+"LOG_DETECTED_ROOTLESS" = "Detected ROOTLESS environment. Prefix: /var/jb";
+"LOG_DETECTED_ROOTFUL" = "Detected ROOTFUL environment. No prefix (root)";
+"LOG_REPO_LOAD_FAILED" = "Failed to load repository %@: %@";
