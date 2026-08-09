@@ -138,7 +138,8 @@ public final class ATCustomTabBarController: UIViewController {
             button.setImage(UIImage(systemName: tab.icon), for: .normal)
             button.setTitle(" \(tab.title)", for: .normal)
             button.tag = index
-            button.addTarget(self, action: #selector(tabTapped(_:)), for: .primaryActionTriggered)
+            // addTarget не нужен — вкладки переключаются автоматически при наведении
+            // фокуса (didUpdateFocus), как системный UITabBarController, без нажатия Select.
             button.translatesAutoresizingMaskIntoConstraints = false
             topBar.addSubview(button)
 
@@ -194,8 +195,19 @@ public final class ATCustomTabBarController: UIViewController {
 
     // MARK: - Действия
 
-    @objc private func tabTapped(_ sender: UIButton) {
-        selectedIndex = sender.tag
+    // Автоматическое переключение вкладки при наведении фокуса на её кнопку —
+    // как системный UITabBarController, без необходимости нажимать Select.
+    // Контент переключается плавно через coordinator, синхронно с анимацией фокуса.
+    public override func didUpdateFocus(in context: UIFocusUpdateContext, with coordinator: UIFocusAnimationCoordinator) {
+        super.didUpdateFocus(in: context, with: coordinator)
+        
+        guard let nextView = context.nextFocusedView else { return }
+        
+        if let index = tabButtons.firstIndex(where: { $0 === nextView }), index != selectedIndex {
+            coordinator.addCoordinatedAnimations({
+                self.selectedIndex = index
+            }, completion: nil)
+        }
     }
 
     @objc private func backTapped() {
