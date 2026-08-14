@@ -22,7 +22,7 @@ public final class ATInstalledViewController: UIViewController, UITableViewDataS
     /// nil — либо пакета нет ни в одном репозитории, либо установленная версия уже актуальна.
     private func availableUpdate(for installed: ATInstalledPackage) -> ATPackage? {
         allPackages
-            .filter { $0.packageID == installed.id }
+            .filter { $0.packageID.lowercased() == installed.id.lowercased() }
             .max { ATDependencyChecker.compareVersions($0.version, "<<", $1.version) }
             .flatMap { latest in
                 ATDependencyChecker.compareVersions(latest.version, ">>", installed.version) ? latest : nil

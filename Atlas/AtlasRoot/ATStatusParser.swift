@@ -2,8 +2,6 @@
 //  ATStatusParser.swift
 //  Atlas
 //
-//  Created by Fix’s Trick’s on 08.07.2026.
-//
 import Foundation
 
 public final class ATStatusParser {
@@ -24,7 +22,7 @@ public final class ATStatusParser {
         let path = statusFilePath
 
         guard let content = try? String(contentsOfFile: path, encoding: .utf8) else {
-            print("Atlas: Не удалось прочитать статус-файл по пути \(path)")
+            print("Atlas: " + String(format: "LOG_STATUS_FILE_ERROR".localized, path))
             return getMockPackages() // Если запускаем на симуляторе Mac — отдаем заглушки
         }
 
@@ -41,13 +39,29 @@ public final class ATStatusParser {
             guard let id = fields["package"], !id.isEmpty else { continue }
 
             // Поле Status — это три слова: <want> <flag> <status>, например "install ok installed".
-            // Раньше здесь была проверка через .contains("installed"), которая ложно засчитывала
-            // "half-installed" (прерванная установка/удаление) как полностью установленный пакет.
-            // Нам нужен ИМЕННО статус "installed" третьим словом — только он значит, что пакет
-            // реально и полностью установлен и с ним можно работать (в том числе удалять).
+            // Возможные значения третьего слова при реально распакованном на диск пакете:
+            //   "installed"       — полностью установлен и настроен
+            //   "half-configured" — файлы на диске, но postinst не завершился (часто из-за
+            //                       неудовлетворённых зависимостей — dpkg -i ставит файлы,
+            //                       но помечает пакет как не полностью настроенный)
+            //   "unpacked"        — файлы распакованы, но configure ещё не запускался
+            //   "half-installed"  — установка прервалась на полпути (реально сломан)
+            //
+            // Показываем пользователю все, кроме явно деинсталлированных ("not-installed",
+            // "config-files") — раз файлы на диске и пакет работает, человек должен его
+            // видеть в списке и иметь возможность удалить.
             guard let status = fields["status"] else { continue }
             let statusWords = status.split(separator: " ")
-            guard statusWords.count == 3, statusWords[2] == "installed" else { continue }
+            guard statusWords.count == 3 else { continue }
+            
+            let wantState = statusWords[0]    // "install", "deinstall", "purge" и т.д.
+            let currentState = statusWords[2] // "installed", "half-configured", "unpacked", "not-installed" и т.д.
+            
+            // Пропускаем только если пакет явно помечен как удалённый или отсутствующий
+            let excludedStates: Set<Substring> = ["not-installed", "config-files"]
+            if excludedStates.contains(currentState) { continue }
+            // Если пользователь пометил пакет на удаление, но файлы ещё на диске — тоже пропускаем
+            if wantState == "deinstall" || wantState == "purge" { continue }
 
             let name = fields["name"] ?? id
             let version = fields["version"] ?? ""
@@ -62,6 +76,13 @@ public final class ATStatusParser {
         return installedPackages.sorted { $0.name.lowercased() < $1.name.lowercased() }
     }
 
+    /// Быстрая проверка: пакет реально стоит в dpkg status?
+    /// Используется для верификации после установки — не доверяем exit code,
+    /// а проверяем факт записи в базе dpkg.
+    public func isPackageInstalled(id: String) -> Bool {
+        readInstalledPackages().contains { $0.id.lowercased() == id.lowercased() }
+    }
+    
     // MARK: - Private
 
     /// Разбирает один блок control-полей (одна запись пакета) в словарь [ключ в нижнем регистре: значение].

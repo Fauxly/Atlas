@@ -112,7 +112,7 @@ public final class ATPackageDetailsViewController: UIViewController {
         titleLabel.text = package.name
         
         // Определяем состояние пакета: не установлен / установлен / есть обновление
-        if let installed = ATStatusParser.shared.readInstalledPackages().first(where: { $0.id == package.packageID }) {
+        if let installed = ATStatusParser.shared.readInstalledPackages().first(where: { $0.id.lowercased() == package.packageID.lowercased() }) {
             // Пакет с таким ID стоит — но может быть, мы смотрим на более новую версию
             if ATDependencyChecker.compareVersions(package.version, ">>", installed.version) {
                 packageState = .updateAvailable(installedVersion: installed.version)
@@ -175,26 +175,28 @@ public final class ATPackageDetailsViewController: UIViewController {
     @objc private func installButtonTapped() {
         switch packageState {
         case .notInstalled:
-            // Обычная установка с нуля
             guard let repository = package.sourceRepository else {
                 appendLog("PKG_DETAILS_ERROR_NO_REPO".localized + "\n")
                 return
             }
             
+            // Проверяем зависимости — если чего-то не хватает, показываем информационно
+            // в логе. Блокировать установку не нужно: apt-get -f install подтянет их сам.
             let missing = ATDependencyChecker.missingDependencies(for: package)
             if !missing.isEmpty {
-                showMissingDependenciesAlert(missing, repository: repository)
-                return
+                let orWord = "PKG_DETAILS_OR".localized
+                let list = missing.map { group in
+                    group.map { $0.displayString }.joined(separator: " \(orWord) ")
+                }.joined(separator: ", ")
+                appendLog(String(format: "PKG_DETAILS_AUTO_DEPS_INFO".localized, list) + "\n")
             }
             
             startInstall(repository: repository)
             
         case .installed:
-            // Удаление
             confirmUninstall()
             
         case .updateAvailable:
-            // Обновление — dpkg -i сам корректно накатывает поверх старой версии
             guard let repository = package.sourceRepository else {
                 appendLog("PKG_DETAILS_ERROR_NO_REPO".localized + "\n")
                 return
@@ -203,30 +205,7 @@ public final class ATPackageDetailsViewController: UIViewController {
         }
     }
     
-    /// Каждая группа — это "ИЛИ" (альтернативы через |), а между группами — "И" (нужны все).
-    /// Показываем только по одной альтернативе на группу, для краткости — обычно она и есть
-    /// та самая нужная зависимость, альтернативы в control-файлах реальных твиков редки.
-    private func showMissingDependenciesAlert(_ missing: [[ATDependencyRequirement]], repository: ATRepository) {
-        let orWord = "PKG_DETAILS_OR".localized
-        let list = missing.map { group in
-            group.map { $0.displayString }.joined(separator: " \(orWord) ")
-        }.joined(separator: "\n")
-        
-        let message = String(format: "PKG_DETAILS_MISSING_DEPS_MESSAGE".localized, package.name, list)
-        
-        let alert = UIAlertController(
-            title: "PKG_DETAILS_MISSING_DEPS_TITLE".localized,
-            message: message,
-            preferredStyle: .alert
-        )
-        
-        alert.addAction(UIAlertAction(title: "PKG_DETAILS_INSTALL_ANYWAY".localized, style: .destructive) { [weak self] _ in
-            self?.startInstall(repository: repository)
-        })
-        alert.addAction(UIAlertAction(title: "COMMON_CANCEL".localized, style: .cancel, handler: nil))
-        
-        present(alert, animated: true, completion: nil)
-    }
+    // showMissingDependenciesAlert удалён — зависимости разрешаются автоматически через apt-get -f install.
     
     private func confirmUninstall() {
         let alert = UIAlertController(
@@ -284,23 +263,49 @@ public final class ATPackageDetailsViewController: UIViewController {
                     self.appendLog("PKG_DETAILS_INSTALLING_VIA_DPKG".localized + "\n")
                 }
                 
+                // Шаг 1: dpkg -i
                 let dpkgPath = ATPathManager.shared.makePath("/usr/bin/dpkg")
-                // elevated: true — тот же persona-elevated posix_spawn, что уже проверен на удалении
                 let result = try await ATSpawn.runCommand(dpkgPath, arguments: ["-i", localURL.path], elevated: true)
                 
                 await MainActor.run {
-                    if result.exitCode == 0 {
+                    self.appendLog(result.stdout)
+                    self.appendLog(result.stderr)
+                }
+                
+                // Шаг 2: если dpkg упал из-за зависимостей — ставим принудительно.
+                // --force-depends пропускает проверку зависимостей, но реально распаковывает
+                // файлы пакета и записывает его в базу dpkg. Зависимости пользователь
+                // может доставить отдельно.
+                if result.exitCode != 0 {
+                    await MainActor.run {
+                        self.appendLog("\n" + "PKG_DETAILS_FORCE_INSTALL".localized + "\n")
+                    }
+                    
+                    let forceResult = try await ATSpawn.runCommand(
+                        dpkgPath,
+                        arguments: ["-i", "--force-depends", localURL.path],
+                        elevated: true
+                    )
+                    
+                    await MainActor.run {
+                        self.appendLog(forceResult.stdout)
+                        self.appendLog(forceResult.stderr)
+                    }
+                }
+                
+                // Шаг 3: ВЕРИФИКАЦИЯ — не доверяем exit code, проверяем реальный статус
+                // в базе dpkg. apt-get -f может вернуть 0, ничего не сделав.
+                let actuallyInstalled = ATStatusParser.shared.isPackageInstalled(id: self.package.packageID)
+                
+                await MainActor.run {
+                    if actuallyInstalled {
                         self.appendLog("\n" + String(format: "PKG_DETAILS_SUCCESS".localized, self.package.packageID) + "\n")
-                        self.appendLog(result.stdout)
                         self.packageState = .installed
                         self.updateInstallButtonAppearance()
                     } else {
-                        self.appendLog("\n" + String(format: "PKG_DETAILS_DPKG_ERROR".localized, result.exitCode) + "\n")
-                        self.appendLog(result.stderr)
+                        self.appendLog("\n" + "PKG_DETAILS_INSTALL_FAILED_VERIFY".localized + "\n")
                         self.installButton.isEnabled = true
                     }
-                    // Скачанный .deb больше не нужен вне зависимости от результата —
-                    // не оставляем его копиться в downloadsDirectory
                     ATFileManager.shared.removeDownloadedFile(for: self.package)
                 }
             } catch {

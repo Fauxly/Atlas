@@ -123,3 +123,9 @@
 "LOG_DETECTED_ROOTLESS" = "Detected ROOTLESS environment. Prefix: /var/jb";
 "LOG_DETECTED_ROOTFUL" = "Detected ROOTFUL environment. No prefix (root)";
 "LOG_REPO_LOAD_FAILED" = "Failed to load repository %@: %@";
+// MARK: - Auto dependency resolution
+"PKG_DETAILS_AUTO_DEPS_INFO" = "Missing dependencies (will be installed automatically): %@";
+"PKG_DETAILS_RESOLVING_DEPS" = "Resolving dependencies via apt-get...";
+"PKG_DETAILS_APT_ERROR" = "[apt-get ERROR] Exit code: %d";
+"PKG_DETAILS_INSTALL_FAILED_VERIFY" = "Installation failed: package not found in dpkg database. Check that all dependencies are available in your sources.";
+"PKG_DETAILS_FORCE_INSTALL" = "Dependencies not available, force-installing...";

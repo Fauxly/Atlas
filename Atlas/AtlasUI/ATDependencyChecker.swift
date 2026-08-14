@@ -78,7 +78,13 @@ public enum ATDependencyChecker {
             return compareVersions(UIDevice.current.systemVersion, op, required)
         }
         
-        guard let match = installed.first(where: { $0.id == requirement.packageID }) else {
+        guard let match = installed.first(where: { $0.id.lowercased() == requirement.packageID.lowercased() })
+            // Если прямого совпадения нет — проверяем поле Provides: у всех установленных
+            // пакетов. Это стандартный Debian-механизм: один пакет может "предоставлять" другой
+            // (например, ElleKit предоставляет mobilesubstrate через Provides: mobilesubstrate,
+            // и зависимость на mobilesubstrate должна считаться удовлетворённой).
+            ?? installed.first(where: { providedPackageIDs(by: $0).contains(requirement.packageID) })
+        else {
             return false
         }
         
@@ -90,6 +96,37 @@ public enum ATDependencyChecker {
     }
     
     // MARK: - Сравнение версий
+    
+    /// Читает поле Provides: из dpkg status для конкретного пакета.
+    /// Provides — список через запятую: "mobilesubstrate, libhooker"
+    private static func providedPackageIDs(by package: ATInstalledPackage) -> [String] {
+        let statusPath = FileManager.default.fileExists(atPath: "/var/jb/var/lib/dpkg/status")
+            ? "/var/jb/var/lib/dpkg/status"
+            : "/var/lib/dpkg/status"
+        
+        guard let content = try? String(contentsOfFile: statusPath, encoding: .utf8) else { return [] }
+        
+        let blocks = content.components(separatedBy: "\n\n")
+        for block in blocks {
+            guard block.contains("Package: \(package.id)") else { continue }
+            guard let providesLine = block.components(separatedBy: "\n")
+                .first(where: { $0.lowercased().hasPrefix("provides:") }) else { continue }
+            
+            let value = providesLine.drop(while: { $0 != ":" }).dropFirst()
+                .trimmingCharacters(in: .whitespaces)
+            return value.components(separatedBy: ",")
+                .map { entry -> String in
+                    // Отбрасываем версию в скобках: "mobilesubstrate (= 99)" → "mobilesubstrate"
+                    let trimmed = entry.trimmingCharacters(in: .whitespaces)
+                    if let parenStart = trimmed.firstIndex(of: "(") {
+                        return String(trimmed[trimmed.startIndex..<parenStart]).trimmingCharacters(in: .whitespaces)
+                    }
+                    return trimmed
+                }
+                .filter { !$0.isEmpty }
+        }
+        return []
+    }
     
     /// Упрощённое сравнение версий в духе dpkg: делим на числовые/нечисловые сегменты
     /// и сравниваем их по очереди. Не претендует на полное соответствие схеме версий

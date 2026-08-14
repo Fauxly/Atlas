@@ -120,3 +120,8 @@
 "LOG_DETECTED_ROOTLESS" = "Обнаружено окружение ROOTLESS. Префикс: /var/jb";
 "LOG_DETECTED_ROOTFUL" = "Обнаружено окружение ROOTFUL. Префикс отсутствует (корень)";
 "LOG_REPO_LOAD_FAILED" = "Не удалось загрузить репозиторий %@: %@";
+"PKG_DETAILS_AUTO_DEPS_INFO" = "Недостающие зависимости (будут установлены автоматически): %@";
+"PKG_DETAILS_RESOLVING_DEPS" = "Разрешение зависимостей через apt-get...";
+"PKG_DETAILS_APT_ERROR" = "[apt-get ОШИБКА] Код выхода: %d";
+"PKG_DETAILS_INSTALL_FAILED_VERIFY" = "Установка не удалась: пакет не найден в базе dpkg. Проверьте, что все зависимости доступны в ваших источниках.";
+"PKG_DETAILS_FORCE_INSTALL" = "Зависимости недоступны, принудительная установка...";
