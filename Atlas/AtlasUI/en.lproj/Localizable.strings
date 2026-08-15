@@ -129,3 +129,6 @@
 "PKG_DETAILS_APT_ERROR" = "[apt-get ERROR] Exit code: %d";
 "PKG_DETAILS_INSTALL_FAILED_VERIFY" = "Installation failed: package not found in dpkg database. Check that all dependencies are available in your sources.";
 "PKG_DETAILS_FORCE_INSTALL" = "Dependencies not available, force-installing...";
+"TAB_UPDATES" = "Updates";
+"UPDATES_EMPTY" = "All packages are up to date";
+"UPDATES_VERSION_CHANGE" = "v%@ → v%@";

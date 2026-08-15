@@ -33,6 +33,7 @@ public final class ATCustomTabBarController: UIViewController {
     private weak var categoriesVC: ATCategoriesViewController?
     private weak var searchVC: ATSearchViewController?
     private weak var installedVC: ATInstalledViewController?
+    private weak var updatesVC: ATUpdatesViewController?
 
     public override func viewDidLoad() {
         super.viewDidLoad()
@@ -66,17 +67,19 @@ public final class ATCustomTabBarController: UIViewController {
         let repoVC = ATRepositoriesViewController()
         let searchVC = ATSearchViewController()
         let installedVC = ATInstalledViewController()
+        let updatesVC = ATUpdatesViewController()
         let settingsVC = ATSettingsViewController()
 
         self.dashboardVC = dashboardVC
         self.categoriesVC = categoriesVC
         self.searchVC = searchVC
         self.installedVC = installedVC
+        self.updatesVC = updatesVC
 
         // Явная аннотация типа обязательна: без неё компилятор не может вывести тип массива
         // из 6 разных подклассов UIViewController одним выражением с .map (Swift type checker
         // сдаётся на такой комбинации — "ambiguous without type annotation").
-        let rootViewControllers: [UIViewController] = [dashboardVC, categoriesVC, repoVC, searchVC, installedVC, settingsVC]
+        let rootViewControllers: [UIViewController] = [dashboardVC, categoriesVC, repoVC, searchVC, installedVC, updatesVC, settingsVC]
         let navControllers: [UINavigationController] = rootViewControllers.map { (vc: UIViewController) -> UINavigationController in
             let nav = UINavigationController(rootViewController: vc)
             nav.setNavigationBarHidden(true, animated: false)
@@ -90,7 +93,8 @@ public final class ATCustomTabBarController: UIViewController {
             Tab(title: "TAB_SOURCES".localized, icon: "tray.2", navController: navControllers[2]),
             Tab(title: "TAB_SEARCH".localized, icon: "magnifyingglass", navController: navControllers[3]),
             Tab(title: "TAB_INSTALLED".localized, icon: "checkmark.circle", navController: navControllers[4]),
-            Tab(title: "TAB_SETTINGS".localized, icon: "gearshape", navController: navControllers[5])
+            Tab(title: "TAB_UPDATES".localized, icon: "arrow.down.circle", navController: navControllers[5]),
+            Tab(title: "TAB_SETTINGS".localized, icon: "gearshape", navController: navControllers[6])
         ]
     }
 
@@ -198,10 +202,17 @@ public final class ATCustomTabBarController: UIViewController {
     // Автоматическое переключение вкладки при наведении фокуса на её кнопку —
     // как системный UITabBarController, без необходимости нажимать Select.
     // Контент переключается плавно через coordinator, синхронно с анимацией фокуса.
+    //
+    // Блокируется, если текущая вкладка показывает НЕ корневой экран (например, карточку
+    // пакета после push) — иначе при листании вниз внутри карточки фокус случайно
+    // "зацепляет" кнопку соседней вкладки и выкидывает на неё, теряя текущий контекст.
     public override func didUpdateFocus(in context: UIFocusUpdateContext, with coordinator: UIFocusAnimationCoordinator) {
         super.didUpdateFocus(in: context, with: coordinator)
         
         guard let nextView = context.nextFocusedView else { return }
+        
+        // Если мы глубже корня навигации — не переключаем вкладки автоматически
+        if tabs[selectedIndex].navController.viewControllers.count > 1 { return }
         
         if let index = tabButtons.firstIndex(where: { $0 === nextView }), index != selectedIndex {
             coordinator.addCoordinatedAnimations({
@@ -237,6 +248,7 @@ public final class ATCustomTabBarController: UIViewController {
                 self.categoriesVC?.allPackages = packages
                 self.searchVC?.allPackages = packages
                 self.installedVC?.allPackages = packages
+                self.updatesVC?.allPackages = packages
             }
         }
     }

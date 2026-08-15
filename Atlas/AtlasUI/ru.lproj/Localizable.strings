@@ -125,3 +125,6 @@
 "PKG_DETAILS_APT_ERROR" = "[apt-get ОШИБКА] Код выхода: %d";
 "PKG_DETAILS_INSTALL_FAILED_VERIFY" = "Установка не удалась: пакет не найден в базе dpkg. Проверьте, что все зависимости доступны в ваших источниках.";
 "PKG_DETAILS_FORCE_INSTALL" = "Зависимости недоступны, принудительная установка...";
+"TAB_UPDATES" = "Обновления";
+"UPDATES_EMPTY" = "Все пакеты актуальны";
+"UPDATES_VERSION_CHANGE" = "v%@ → v%@";
